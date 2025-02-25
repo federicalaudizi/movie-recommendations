@@ -74,7 +74,6 @@ def get_recommendations(model, user_vector, movies_df, n_recommendations=10):
     # Get predictions
     predictions = model.predict(user_vector_reshaped)[0]
 
-
     # Get indices of top recommended movies
     # Exclude movies the user has already rated
     rated_movies = np.where(user_vector > 0)[0]
@@ -106,37 +105,40 @@ def main():
         model = MovieVAE(n_users, 1682)
         model.build_model()
         
-        # Add tabs
-        tab1, tab2 = st.tabs(["Rate Movies", "Get Recommendations"])
+        # Initialize session state for showing recommendations
+        if 'show_recommendations' not in st.session_state:
+            st.session_state.show_recommendations = False
         
-        with tab1:
-            user_ratings = get_user_ratings(movies_df)
-            if st.button("Save Ratings"):
-                st.session_state.user_ratings = user_ratings
-                st.success("Ratings saved! Go to the Recommendations tab.")
+        # Get user ratings
+        user_ratings = get_user_ratings(movies_df)
         
-        with tab2:
-            if 'user_ratings' in st.session_state:
-                user_vector = create_user_vector(
-                    st.session_state.user_ratings,
-                    n_movies
+        # Save ratings button
+        if st.button("Save Ratings"):
+            st.session_state.user_ratings = user_ratings
+            st.session_state.show_recommendations = True
+            st.success("Ratings saved! Showing recommendations below.")
+        
+        # Show recommendations section if ratings are saved
+        if st.session_state.show_recommendations and 'user_ratings' in st.session_state:
+            st.markdown("---")
+            st.subheader("Your Recommended Movies")
+            
+            user_vector = create_user_vector(
+                st.session_state.user_ratings,
+                n_movies
+            )
+            
+            recommendations = get_recommendations(
+                model,
+                user_vector,
+                movies_df
+            )
+            
+            for rec in recommendations:
+                st.write(
+                    f"{rec['title']} "
+                    f"(Predicted Rating: {rec['predicted_rating']:.1f})"
                 )
-                
-                if st.button("Get Recommendations"):
-                    recommendations = get_recommendations(
-                        model,
-                        user_vector,
-                        movies_df
-                    )
-                    
-                    st.subheader("Recommended Movies")
-                    for rec in recommendations:
-                        st.write(
-                            f"{rec['title']} "
-                            f"(Predicted Rating: {rec['predicted_rating']:.1f})"
-                        )
-            else:
-                st.info("Please rate some movies in the Rate Movies tab first.")
     
     except Exception as e:
         import traceback
