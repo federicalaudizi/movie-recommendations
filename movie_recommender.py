@@ -1,12 +1,12 @@
 import numpy as np
 import pandas as pd
-from tensorflow.python.keras.layers import Input, Dense, Lambda
-from tensorflow.python.keras.models import Model
-from tensorflow.python.keras.losses import binary_crossentropy
-from tensorflow.python.keras.callbacks import EarlyStopping
+from tf_keras.layers import Input, Dense, Lambda
+from tf_keras.models import Model
+from tf_keras.losses import binary_crossentropy
+from tf_keras.callbacks import EarlyStopping
 from sklearn.model_selection import train_test_split
-import tensorflow.python.keras.backend as K
-from tensorflow.python.keras.losses import binary_crossentropy 
+import tf_keras.backend as K
+from tf_keras.losses import binary_crossentropy 
 
 
 class MovieVAE:
