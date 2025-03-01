@@ -9,7 +9,7 @@ import tf_keras.backend as K
 from tf_keras.losses import binary_crossentropy 
 
 
-class MovieVAE:
+class MovieVAE: 
     def __init__(self, n_users, n_movies, latent_dim=50):
         self.n_users = n_users
         self.n_movies = n_movies
@@ -17,14 +17,6 @@ class MovieVAE:
         self.encoder = None
         self.decoder = None
         self.vae = None
-    
-    # def sampling(args):
-    #     """Reparameterization trick."""
-    #     z_mean, z_log_var = args
-    #     batch = tf.shape(z_mean)[0]
-    #     dim = tf.shape(z_mean)[1]
-    #     epsilon = tf.random.normal(shape=(batch, dim))
-    #     return z_mean + tf.exp(0.5 * z_log_var) * epsilon
         
     def build_model(self):
         # Encoder
@@ -37,8 +29,7 @@ class MovieVAE:
         z_mean = Dense(self.latent_dim)(x)
         z_log_var = Dense(self.latent_dim)(x)
         
-        #define the sampling layer
-
+        #define the sampling layer and reparameterization trick
         z = Lambda(lambda args: args[0] + K.exp(0.5 * args[1]) * K.random_normal(shape=K.shape(args[0])))([z_mean, z_log_var])
 
         self.encoder = Model(input_layer, [z_mean, z_log_var, z])
@@ -104,6 +95,33 @@ def load_and_preprocess_data(ratings_path='ml-100k/ml-100k/u.data'):
     
     return user_movie_matrix
 
+def compute_precision_recall_f1(test_data, predictions, k):
+    """Compute precision, recall, and F1 score."""
+    n_users = test_data.shape[0]
+    
+    precisions = []
+    recalls = []
+    f1s = []
+    
+    for i in range(n_users):
+        top_k_preds = np.argsort(-predictions[i])[:k]
+        true_positives = np.intersect1d(np.where(test_data[i] > 0), top_k_preds)
+        
+        precision = len(true_positives) / k
+        recall = len(true_positives) / len(np.where(test_data[i] > 0)[0])
+        
+        if precision + recall == 0:
+            f1 = 0
+        else:
+            f1 = 2 * (precision * recall) / (precision + recall)
+        
+        precisions.append(precision)
+        recalls.append(recall)
+        f1s.append(f1)
+    
+    return np.mean(precisions), np.mean(recalls), np.mean(f1s)
+
+
 def evaluate_model(test_data, predictions):
     """Calculate evaluation metrics."""
     mse = np.mean(np.square(test_data - predictions))
@@ -139,6 +157,10 @@ def main():
     
     # Make predictions and evaluate
     predictions = model.predict(test_data)
+    precision, recall, f1 = compute_precision_recall_f1(test_data, predictions, 10)
+    print(f"Precision@10: {precision:.4f}")
+    print(f"Recall@10: {recall:.4f}")
+    print(f"F1@10: {f1:.4f}")
     rmse, mae = evaluate_model(test_data, predictions)
     
     return model, history, (rmse, mae)
