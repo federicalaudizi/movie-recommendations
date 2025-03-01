@@ -3,6 +3,73 @@ import pandas as pd
 import numpy as np
 from movie_recommender import MovieVAE, load_and_preprocess_data
 
+# Dummy user credentials 
+USER_CREDENTIALS = {
+    "user1": "password123",
+    "user2": "movierec2024"
+}
+
+def init_session_state():
+    """Initialize session state variables"""
+    if "authenticated" not in st.session_state:
+        st.session_state.authenticated = False
+    if "page" not in st.session_state:
+        st.session_state.page = "login"
+    if "username" not in st.session_state:
+        st.session_state.username = None   
+    if "guest" not in st.session_state:
+        st.session_state.guest = False
+    if "selected_genres" not in st.session_state:
+        st.session_state.selected_genres = []
+    if "user_ratings" not in st.session_state:
+        st.session_state.user_ratings = {}
+    if "sample_movies" not in st.session_state:
+        st.session_state.sample_movies = None
+    if "show_recommendations" not in st.session_state:
+        st.session_state.show_recommendations = False
+
+def navigate_to(page):
+    """Helper function to navigate between pages"""
+    st.session_state.page = page
+
+def auth_page():
+    """Authentication page with user and guest login options"""
+    st.title("Movie Recommender Login")
+    
+    login_option = st.radio("Login as:", ["User", "Guest"])
+    
+    if login_option == "User":
+        # User login form
+        st.subheader("User Login")
+        username = st.text_input("Username")
+        password = st.text_input("Password", type="password")
+
+        if st.button("Login"):
+            if username in USER_CREDENTIALS and USER_CREDENTIALS[username] == password:
+                st.session_state.authenticated = True
+                st.session_state.username = username
+                st.session_state.guest = False
+                navigate_to("rating")
+                st.success(f"Welcome, {username}!")
+                st.rerun()
+            else:
+                st.error("Invalid username or password. Try again.")
+    else:
+        # Guest login with genre preferences
+        st.subheader("Guest Login")
+        st.write("Select your preferred genres to receive recommendations.")
+
+        genres = ["Action", "Comedy", "Drama", "Sci-Fi", "Romance", "Thriller"]
+        selected_genres = st.multiselect("Choose genres", genres)
+
+        if st.button("Continue as Guest"):
+            st.session_state.authenticated = True
+            st.session_state.guest = True
+            st.session_state.selected_genres = selected_genres
+            navigate_to("rating")
+            st.success("You are logged in as a guest!")
+            st.rerun()
+
 def load_movie_data(movies_path='ml-100k/ml-100k/u.item'):
     """Load movie titles and genres."""
     column_names = [
@@ -32,12 +99,8 @@ def get_user_ratings(movies_df, n_movies_to_rate=10):
     """Get user ratings for a sample of movies."""
     st.subheader("Rate some movies")
     
-    # Initialize session state for ratings if it doesn't exist
-    if 'user_ratings' not in st.session_state:
-        st.session_state.user_ratings = {}
-    
-    # Sample random movies - but only once!
-    if 'sample_movies' not in st.session_state:
+    # Sample random movies if not already sampled
+    if st.session_state.sample_movies is None:
         st.session_state.sample_movies = movies_df.sample(n=n_movies_to_rate)
     
     # Create sliders and store ratings in session state
@@ -92,58 +155,121 @@ def get_recommendations(model, user_vector, movies_df, n_recommendations=10):
     
     return recommendations
 
-def main():
-    st.title("Movie Recommender System")
+def rating_page():
+    """Movie rating page"""
+    # Show logout button
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        st.title("Movie Recommender System")
+        if st.session_state.guest:
+            st.write(f"Logged in as: Guest")
+        else:
+            st.write(f"Logged in as: {st.session_state.username}")
     
-    # Load data
-    try:
-        user_movie_matrix = load_and_preprocess_data()
-        movies_df = load_movie_data()
-        
-        # Initialize and load model
-        n_users, n_movies = user_movie_matrix.shape
-        model = MovieVAE(n_users, 1682)
-        model.build_model()
-        
-        # Initialize session state for showing recommendations
-        if 'show_recommendations' not in st.session_state:
+    with col2:
+        if st.button("Logout"):
+            st.session_state.authenticated = False
+            st.session_state.page = "login"
+            st.session_state.username = None
+            st.session_state.guest = False
+            st.session_state.user_ratings = {}
+            st.session_state.sample_movies = None
             st.session_state.show_recommendations = False
-        
+            st.rerun()
+
+    # Load data
+    user_movie_matrix = load_and_preprocess_data()
+    movies_df = load_movie_data()
+
+    # Initialize model
+    n_users, n_movies = user_movie_matrix.shape
+    model = MovieVAE(n_users, 1682)
+    model.build_model()
+
+    # Show content based on user type
+    if st.session_state.guest:
+        st.subheader("Recommendations Based on Your Selected Genres")
+        st.write("You chose:", ", ".join(st.session_state.selected_genres))
+        # Here you would implement genre-based recommendations
+        st.write("Genre-based recommendations would appear here.")
+    else:
         # Get user ratings
         user_ratings = get_user_ratings(movies_df)
         
-        # Save ratings button
-        if st.button("Save Ratings"):
+        if st.button("Get Recommendations"):
             st.session_state.user_ratings = user_ratings
             st.session_state.show_recommendations = True
-            st.success("Ratings saved! Showing recommendations below.")
-        
-        # Show recommendations section if ratings are saved
-        if st.session_state.show_recommendations and 'user_ratings' in st.session_state:
-            st.markdown("---")
-            st.subheader("Your Recommended Movies")
-            
-            user_vector = create_user_vector(
-                st.session_state.user_ratings,
-                n_movies
-            )
-            
-            recommendations = get_recommendations(
-                model,
-                user_vector,
-                movies_df
-            )
-            
-            for rec in recommendations:
-                st.write(
-                    f"{rec['title']} "
-                    f"(Predicted Rating: {rec['predicted_rating']:.1f})"
-                )
+            navigate_to("recommendations")
+            st.rerun()
+
+def recommendations_page():
+    """Recommendations page"""
+    st.title("Your Movie Recommendations")
     
-    except Exception as e:
-        import traceback
-        st.error(f"Error loading data or model: {str(e)}")
-        st.error(traceback.format_exc())
+    # Show navigation options
+    cols = st.columns([1, 1, 2])
+    with cols[0]:
+        if st.button("Back to Ratings"):
+            navigate_to("rating")
+            st.rerun()
+    with cols[1]:
+        if st.button("Logout"):
+            st.session_state.authenticated = False
+            st.session_state.page = "login"
+            st.session_state.username = None
+            st.session_state.guest = False
+            st.session_state.user_ratings = {}
+            st.session_state.sample_movies = None
+            st.session_state.show_recommendations = False
+            st.rerun()
+    
+    # Load data and model
+    user_movie_matrix = load_and_preprocess_data()
+    movies_df = load_movie_data()
+    
+    n_users, n_movies = user_movie_matrix.shape
+    model = MovieVAE(n_users, 1682)
+    model.build_model()
+    
+    # Display recommendations
+    user_vector = create_user_vector(st.session_state.user_ratings, n_movies)
+    recommendations = get_recommendations(model, user_vector, movies_df)
+    
+    st.subheader("Movies You Might Like")
+    for i, rec in enumerate(recommendations, 1):
+        st.write(f"{i}. {rec['title']} (Predicted Rating: {rec['predicted_rating']:.1f})")
+    
+    # Show what the user rated
+    st.subheader("Movies You Rated")
+    rated_movies = []
+    for movie_id, rating in st.session_state.user_ratings.items():
+        if rating > 0:
+            movie = movies_df[movies_df['movie_id'] == movie_id]
+            if not movie.empty:
+                rated_movies.append({
+                    'title': movie['title'].values[0],
+                    'rating': rating
+                })
+    
+    for rated in sorted(rated_movies, key=lambda x: x['rating'], reverse=True):
+        st.write(f"{rated['title']} - Your Rating: {rated['rating']}")
+
+def main():
+    """Main function to manage pages"""
+    # Initialize session state
+    init_session_state()
+    
+    # Check authentication
+    if not st.session_state.authenticated:
+        auth_page()
+    else:
+        # Route to the correct page
+        if st.session_state.page == "login":
+            auth_page()
+        elif st.session_state.page == "rating":
+            rating_page()
+        elif st.session_state.page == "recommendations":
+            recommendations_page()
 
 if __name__ == "__main__":
     main()
