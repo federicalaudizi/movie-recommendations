@@ -79,10 +79,10 @@ def load_movie_data(movies_path='ml-100k/ml-100k/u.item'):
         'video_release_date',
         'imdb_url'
     ] + [
-        'unknown', 'action', 'adventure', 'animation',
-        'children', 'comedy', 'crime', 'documentary', 'drama', 'fantasy',
-        'film_noir', 'horror', 'musical', 'mystery', 'romance', 'sci_fi',
-        'thriller', 'war', 'western'
+        'Unknown', 'Action', 'Adventure', 'Animation',
+        'Children', 'Comedy', 'Crime', 'Documentary', 'Drama', 'Fantasy',
+        'Film_noir', 'horror', 'musical', 'mystery', 'Romance', 'Sci-Fi',
+        'Thriller', 'war', 'western'
     ]
     
     movies = pd.read_csv(
@@ -191,6 +191,18 @@ def rating_page():
         st.subheader("Recommendations Based on Your Selected Genres")
         st.write("You chose:", ", ".join(st.session_state.selected_genres))
         # Here you would implement genre-based recommendations
+        movies_df = load_movie_data()
+        
+        # Show genre-based recommendations
+        if st.session_state.selected_genres:
+            genre_movies = get_genre_based_movies(movies_df, st.session_state.selected_genres)
+            st.write(genre_movies)
+        else:
+            # Show popular movies as a fallback
+            st.write("Top Rated Movies:")
+            popular_movies = get_popular_movies(movies_df)
+            st.write(popular_movies)
+        
         st.write("Genre-based recommendations would appear here.")
     else:
         # Get user ratings
@@ -201,6 +213,17 @@ def rating_page():
             st.session_state.show_recommendations = True
             navigate_to("recommendations")
             st.rerun()
+
+def get_popular_movies(movies_df, n=10):
+    """Get top-rated movies for guests."""
+    ratings = pd.read_csv('ml-100k/ml-100k/u.data', sep='\t', names=['user_id', 'movie_id', 'rating', 'timestamp'])
+    top_movies = ratings.groupby('movie_id').mean()['rating'].sort_values(ascending=False).head(n)
+    return movies_df[movies_df['movie_id'].isin(top_movies.index)][['title']]
+
+def get_genre_based_movies(movies_df, selected_genres, n=10):
+    """Recommend movies based on selected genres."""
+    filtered_movies = movies_df[movies_df[selected_genres].sum(axis=1) > 0]
+    return filtered_movies.sample(n=min(n, len(filtered_movies)))[['title']]
 
 def recommendations_page():
     """Recommendations page"""
