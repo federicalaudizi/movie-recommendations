@@ -346,8 +346,8 @@ from movie_recommender import MovieVAE
 def plot_model_comparison(results_df):
     """Create bar charts comparing model performance metrics."""
     metrics = ['rmse', 'mae', 'precision', 'recall', 'f1']
-    fig, axes = plt.subplots(len(metrics), 1, figsize=(10, 15))
-    
+    _, axes = plt.subplots(len(metrics), 1, figsize=(10, 15))
+
     for i, metric in enumerate(metrics):
         sns.barplot(x='model', y=metric, data=results_df, ax=axes[i])
         axes[i].set_title(f'Model Comparison - {metric.upper()}')
@@ -362,71 +362,6 @@ def plot_model_comparison(results_df):
     
     plt.tight_layout()
     plt.savefig('model_comparison.png')
-    plt.close()
-
-def plot_radar_chart(results_df):
-    """Create radar chart for comparing models across metrics."""
-    # Normalize metrics for radar chart (0-1 scale)
-    radar_df = results_df.copy()
-    
-    # For RMSE and MAE, lower is better, so we invert them
-    radar_df['rmse_inv'] = 1 - (radar_df['rmse'] / radar_df['rmse'].max())
-    radar_df['mae_inv'] = 1 - (radar_df['mae'] / radar_df['mae'].max())
-    
-    # Normalize other metrics
-    for metric in ['precision', 'recall', 'f1']:
-        radar_df[metric] = radar_df[metric] / radar_df[metric].max()
-    
-    # Radar chart setup
-    metrics = ['rmse_inv', 'mae_inv', 'precision', 'recall', 'f1']
-    labels = ['RMSE (inv)', 'MAE (inv)', 'Precision@10', 'Recall@10', 'F1@10']
-    
-    # Number of variables
-    N = len(metrics)
-    
-    # What will be the angle of each axis in the plot
-    angles = [n / float(N) * 2 * np.pi for n in range(N)]
-    angles += angles[:1]  # Close the loop
-    
-    # Create the plot
-    fig = plt.figure(figsize=(10, 10))
-    ax = plt.subplot(111, polar=True)
-    
-    # Draw one axis per variable and add labels
-    plt.xticks(angles[:-1], labels, size=12)
-    
-    # Draw the y-axis labels (0-100%)
-    ax.set_rlabel_position(0)
-    plt.yticks([0.25, 0.5, 0.75, 1.0], ["0.25", "0.5", "0.75", "1.0"], color="grey", size=10)
-    plt.ylim(0, 1)
-    
-    # Plot each model
-    for i, model in enumerate(radar_df['model']):
-        values = radar_df.loc[i, metrics].values.tolist()
-        values += values[:1]  # Close the loop
-        
-        # Plot values
-        ax.plot(angles, values, linewidth=2, linestyle='solid', label=model)
-        ax.fill(angles, values, alpha=0.1)
-    
-    # Add legend
-    plt.legend(loc='upper right', bbox_to_anchor=(0.1, 0.1))
-    plt.title('Model Comparison Radar Chart', size=15)
-    
-    plt.savefig('radar_comparison.png')
-    plt.close()
-
-def plot_heatmap(user_movie_matrix, n_users=10, n_movies=20):
-    """Create a heatmap of user-movie ratings."""
-    # Sample a subset of users and movies for better visualization
-    sample_matrix = user_movie_matrix.iloc[:n_users, :n_movies]
-    
-    plt.figure(figsize=(12, 8))
-    sns.heatmap(sample_matrix, cmap="YlGnBu", annot=True, fmt=".1f", linewidths=.5)
-    plt.title(f'User-Movie Rating Matrix (Sample of {n_users} users, {n_movies} movies)')
-    plt.xlabel('Movie ID')
-    plt.ylabel('User ID')
-    plt.savefig('rating_heatmap.png')
     plt.close()
 
 def plot_similarity_matrix(cf_model, n_users=20):
@@ -512,41 +447,6 @@ def plot_alpha_sensitivity(user_movie_matrix, movie_features, test_matrix):
     plt.savefig('alpha_sensitivity.png')
     plt.close()
 
-def plot_top_recommendations(hybrid_model, user_movie_matrix, user_idx=0, top_k=10):
-    """Plot the top k recommendations for a specific user."""
-    # Get the user's actual ratings
-    user_ratings = user_movie_matrix.iloc[user_idx].values
-    
-    # Get predictions for the user
-    predictions = hybrid_model.predict(user_idx)
-    
-    # Find movies the user hasn't rated
-    unrated_indices = np.where(user_ratings == 0)[0]
-    
-    # Get the top k predicted movies
-    top_indices = unrated_indices[np.argsort(-predictions[unrated_indices])[:top_k]]
-    top_ratings = predictions[top_indices]
-    
-    # Create labels for the movies
-    movie_labels = [f'Movie {idx}' for idx in top_indices]
-    
-    plt.figure(figsize=(12, 6))
-    bars = plt.barh(movie_labels, top_ratings, color='skyblue')
-    plt.xlabel('Predicted Rating')
-    plt.ylabel('Movie')
-    plt.title(f'Top {top_k} Movie Recommendations for User {user_idx}')
-    plt.gca().invert_yaxis()  # To display the highest rated at the top
-    
-    # Add rating values
-    for bar in bars:
-        width = bar.get_width()
-        plt.text(width + 0.1, bar.get_y() + bar.get_height()/2, f'{width:.2f}', 
-                ha='left', va='center')
-    
-    plt.tight_layout()
-    plt.savefig('top_recommendations.png')
-    plt.close()
-
 def generate_all_visualizations():
     """Generate all visualization plots."""
     # Load and preprocess data
@@ -559,8 +459,6 @@ def generate_all_visualizations():
         random_state=42
     )
     
-    # Plot user-movie rating heatmap
-    plot_heatmap(user_movie_matrix)
     
     # Initialize and train models
     # Initialize VAE model
@@ -610,9 +508,7 @@ def generate_all_visualizations():
     
     # Generate visualizations
     plot_model_comparison(results_df)
-    plot_radar_chart(results_df)
     plot_alpha_sensitivity(train_matrix, movie_features, test_matrix)
-    plot_top_recommendations(hybrid_model, train_matrix)
     
     return results_df
 
