@@ -203,7 +203,6 @@ def rating_page():
             popular_movies = get_popular_movies(movies_df)
             st.write(popular_movies)
         
-        st.write("Genre-based recommendations would appear here.")
     else:
         # Get user ratings
         user_ratings = get_user_ratings(movies_df)
