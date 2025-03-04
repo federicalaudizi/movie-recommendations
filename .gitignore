@@ -1,3 +1,6 @@
 __pycache__/
 *.pyc
 *.pyo
+alpha_sensitivity.png
+model_comparison.png
+similarity_matrix.png
