@@ -277,7 +277,6 @@ def recommendations_page():
         st.write(f"{rated['title']} - Your Rating: {rated['rating']}")
 
 def main():
-    """Main function to manage pages"""
     # Initialize session state
     init_session_state()
     
@@ -285,7 +284,6 @@ def main():
     if not st.session_state.authenticated:
         auth_page()
     else:
-        # Route to the correct page
         if st.session_state.page == "login":
             auth_page()
         elif st.session_state.page == "rating":

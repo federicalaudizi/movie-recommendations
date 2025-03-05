@@ -5,7 +5,7 @@ from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
 import seaborn as sns
 from movie_recommender import MovieVAE
-# Reuse the data loading function from the original code
+
 def load_and_preprocess_data(ratings_path='ml-100k/ml-100k/u.data', 
                              item_path='ml-100k/ml-100k/u.item'):
     """Load and preprocess MovieLens data."""
