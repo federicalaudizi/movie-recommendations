@@ -193,7 +193,7 @@ class KnowledgeBasedRecommender:
 class HybridRecommender:
     """Hybrid recommender combining collaborative and knowledge-based approaches"""
     
-    def __init__(self, cf_model, kb_model, alpha=0.5):
+    def __init__(self, cf_model, kb_model, alpha=0.6):
         """
         Initialize the hybrid recommender.
         
